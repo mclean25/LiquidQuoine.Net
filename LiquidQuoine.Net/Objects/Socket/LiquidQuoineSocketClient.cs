@@ -39,7 +39,7 @@ TODO: {"event":"pusher:subscribe","data":{"channel":"product_51_resolution_3600_
         /// <summary>
         /// User id, eg 651514 and pair code e.g. ethusd
         /// </summary>
-        private const string UserExecutionsChannel = "executions_{}_cash_{}"; 
+        private const string UserExecutionsChannel = "executions_{}_cash_{}";
         /// <summary>
         /// User id, eg 651514 and pair ticker e.g. eth
         /// </summary>
@@ -54,36 +54,53 @@ TODO: {"event":"pusher:subscribe","data":{"channel":"product_51_resolution_3600_
         public LiquidQuoineSocketClient(LiquidQuoineSocketClientOptions options) : base(options, null)
         {
             _currentUserId = options.UserId;
-           // Configure(options);
+            // Configure(options);
             log.Level = LogVerbosity.Debug;
-            _pusherClient = new Pusher(options.PushherAppId, new PusherOptions() 
+            _pusherClient = new Pusher(options.PushherAppId, new PusherOptions()
             {
                 ProtocolNumber = 7,
                 Version = "4.4.0",
-                Endpoint = options.BaseAddress 
+                Endpoint = options.BaseAddress
             });
             _pusherClient.Connect();
+            _pusherClient.Error += OnError;
+            _pusherClient.Connected += OnConnected;
+        }
+
+        private void OnError(object sender, PusherException eventArgs)
+        {
+            System.Diagnostics.Debug.Print(eventArgs.Message);
+        }
+
+        private void OnConnected(object sender)
+        {
+            System.Diagnostics.Debug.Print("Connnected");
         }
 
         public void SubscribeToOrderBookSide(string symbol, OrderSide side, Action<List<LiquidQuoineOrderBookEntry>, OrderSide, string> onData)
         {
-            var _myChannel = _pusherClient.Subscribe(FillPathParameter(OrderBookSideChannel, symbol.ToLower(), JsonConvert.SerializeObject(side, new OrderSideConverter())));
+            var path = FillPathParameter(
+                    OrderBookSideChannel,
+                    symbol.ToUpper(),
+                    JsonConvert.SerializeObject(side, new OrderSideConverter()));
+            var _myChannel = _pusherClient.Subscribe(path);
             _myChannel.Bind("updated", (dynamic data) =>
             {
                 string t = Convert.ToString(data);
+                Console.WriteLine(t);
                 List<LiquidQuoineOrderBookEntry> deserialized = Deserialize<List<LiquidQuoineOrderBookEntry>>(t).Data;
                 onData(deserialized, side, symbol);
             });
         }
 
-        public void SubscribeToUserExecutions(string symbol, Action<LiquidQuoineExecution,string> onData, string userId = null)
+        public void SubscribeToUserExecutions(string symbol, Action<LiquidQuoineExecution, string> onData, string userId = null)
         {
-            var _myChannel = _pusherClient.Subscribe(FillPathParameter(UserExecutionsChannel, userId ?? _currentUserId, symbol));            
+            var _myChannel = _pusherClient.Subscribe(FillPathParameter(UserExecutionsChannel, userId ?? _currentUserId, symbol));
             _myChannel.Bind("created", (dynamic data) =>
             {
                 string t = Convert.ToString(data);
                 LiquidQuoineExecution deserialized = Deserialize<LiquidQuoineExecution>(t).Data;
-                onData(deserialized,symbol);
+                onData(deserialized, symbol);
             });
         }
         public void SubscribeToExecutions(string symbol, Action<LiquidQuoineExecution, string> onData)

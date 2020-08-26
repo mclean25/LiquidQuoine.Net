@@ -17,7 +17,7 @@ namespace LiquidQuoine.Net.Objects
         [JsonProperty("currency_symbol")]
         public string CurrencySymbol { get; set; }
 
-        [JsonProperty("balance"),JsonConverter(typeof(StringToDecimalConverter))]
+        [JsonProperty("balance"), JsonConverter(typeof(StringToDecimalConverter))]
         public decimal Balance { get; set; }
 
         [JsonProperty("pusher_channel")]
